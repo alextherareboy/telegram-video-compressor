@@ -7,16 +7,19 @@ from telegram.ext import Application, MessageHandler, filters, CommandHandler
 
 # === CONFIGURACIÓN ===
 TOKEN = "8885575677:AAHN3u6FRWxtY2sVOe3Rlte1RzNPyz5djyM"  # <--- PON EL TOKEN COMPLETO
-
-FFMPEG_PATH = r"C:\ffmpeg\bin\ffmpeg.exe"
+import os
+import subprocess
+import shutil
 
 # === VERIFICAR FFMPEG ===
-print("🔍 Verificando FFmpeg...")
-if os.path.exists(FFMPEG_PATH):
-    print(f"✅ FFmpeg encontrado: {FFMPEG_PATH}")
-else:
-    print(f"⚠️  FFmpeg NO encontrado en: {FFMPEG_PATH}")
-    print("   El bot funcionará pero no podrá comprimir videos")
+def FFMPEG_PATH():
+    print("🔍 Verificando FFmpeg...")
+    if os.path.exists(FFMPEG_PATH):
+        print(f"✅ FFmpeg encontrado: {FFMPEG_PATH}")
+    else:
+        print(f"⚠️  FFmpeg NO encontrado en: {FFMPEG_PATH}")
+        print("   El bot funcionará pero no podrá comprimir videos")
+
 
 # === DIRECTORIO TEMPORAL ===
 TEMP_DIR = Path(tempfile.gettempdir()) / "video_bot"
