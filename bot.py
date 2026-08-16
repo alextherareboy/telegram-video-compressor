@@ -15,14 +15,13 @@ import shutil
 # Al inicio del archivo, asigna directamente
 FFMPEG_PATH = shutil.which('ffmpeg') or 'ffmpeg'
 
-print("🔍 Verificando FFmpeg..."):
+print("🔍 Verificando FFmpeg...")
 if os.path.exists(FFMPEG_PATH):
         print(f"✅ FFmpeg encontrado: {FFMPEG_PATH}")
-        else:
-        print(f"⚠️  FFmpeg NO encontrado en: {FFMPEG_PATH}")
-        print("   El bot funcionará pero no podrá comprimir videos")
 
-
+else:
+    print(f"⚠️  FFmpeg NO encontrado en: {FFMPEG_PATH}")
+    print("   El bot funcionará pero no podrá comprimir videos")
 
 # === DIRECTORIO TEMPORAL ===
 TEMP_DIR = Path(tempfile.gettempdir()) / "video_bot"
