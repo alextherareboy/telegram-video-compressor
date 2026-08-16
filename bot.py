@@ -12,13 +12,16 @@ import subprocess
 import shutil
 
 # === VERIFICAR FFMPEG ===
-def FFMPEG_PATH():
-    print("🔍 Verificando FFmpeg...")
-    if os.path.exists(FFMPEG_PATH):
+# Al inicio del archivo, asigna directamente
+FFMPEG_PATH = shutil.which('ffmpeg') or 'ffmpeg'
+
+print("🔍 Verificando FFmpeg..."):
+if os.path.exists(FFMPEG_PATH):
         print(f"✅ FFmpeg encontrado: {FFMPEG_PATH}")
-    else:
+        else:
         print(f"⚠️  FFmpeg NO encontrado en: {FFMPEG_PATH}")
         print("   El bot funcionará pero no podrá comprimir videos")
+
 
 
 # === DIRECTORIO TEMPORAL ===
