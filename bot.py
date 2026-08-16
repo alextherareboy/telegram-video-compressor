@@ -33,8 +33,8 @@ async def start(update: Update, context):
     await update.message.reply_text(
         "👋 ¡Hola! Soy el compresor de videos.\n\n"
         "📹 Envíame un video y lo comprimiré.\n"
-        "⏱️ El proceso puede tomar varios segundos.\n\n"
-        "✅ El bot está funcionando correctamente."
+        "⏱️ El proceso puede tomar varios minutos.\n\n"
+        "✅ En este momento el bot está funcionando correctamente."
     )
     print(f"✅ /start de @{update.effective_user.username}")
 
@@ -44,9 +44,12 @@ async def handle_video(update: Update, context, status_msg=None):
     try:
         user = update.effective_user.username or update.effective_user.id
         print(f"📩 Video recibido de: {user}")
+        if status_msg is None:
+            status_msg = await update.message.reply_text("📥Procesando tu video")
 
         # Responder inmediatamente
         await update.message.reply_text("📥 Procesando tu video...")
+
 
         # Obtener archivo
         file = await update.message.video.get_file()
@@ -93,12 +96,14 @@ async def handle_video(update: Update, context, status_msg=None):
             mensaje_calidad = "✨ Modo alta calidad"
 
         # Mostrar al usuario qué modo se está usando
-        await status_msg.edit_text(
-            f"🔄 Comprimiendo video...\n"
-            f"📊 Tamaño: {size_mb:.1f} MB\n"
-            f"⚙️  {mensaje_calidad}\n"
-            f"⏱️ Por favor espera..."
-        )
+        if status_msg:
+            await status_msg.edit_text(
+                f"🔄 Comprimiendo video...\n"
+                f"📊 Tamaño: {size_mb:.1f} MB\n"
+                f"⚙️  {mensaje_calidad}\n"
+                f"⏱️ Por favor espera..."
+            )
+
 
         # Comprimir
         await update.message.reply_text("🔄 Comprimiendo video (esto puede tomar tiempo)...")
