@@ -36,7 +36,7 @@ async def start(update: Update, context):
     print(f"✅ /start de @{update.effective_user.username}")
 
 
-async def handle_video(update: Update, context):
+async def handle_video(update: Update, context, status_msg=None):
     """Procesa videos"""
     try:
         user = update.effective_user.username or update.effective_user.id
@@ -62,6 +62,40 @@ async def handle_video(update: Update, context):
         # Tamaño original
         size_mb = input_path.stat().st_size / (1024 * 1024)
         await update.message.reply_text(f"📊 Tamaño original: {size_mb:.2f} MB")
+        # === AJUSTE AUTOMÁTICO DE CALIDAD Y VELOCIDAD ===
+        # Según el tamaño del video, ajustamos los parámetros
+
+        if size_mb > 80:
+            # Videos muy grandes: compresión rápida y agresiva
+            crf = 32
+            preset = "veryfast"
+            mensaje_calidad = "⚡ Modo rápido (prioriza velocidad)"
+
+        elif size_mb > 40:
+            # Videos medianos: balance entre calidad y velocidad
+            crf = 30
+            preset = "fast"
+            mensaje_calidad = "📊 Modo balanceado"
+
+        elif size_mb > 20:
+            # Videos pequeños: buena calidad
+            crf = 28
+            preset = "fast"
+            mensaje_calidad = "🎯 Modo calidad óptima"
+
+        else:
+            # Videos muy pequeños: mejor calidad posible
+            crf = 26
+            preset = "medium"
+            mensaje_calidad = "✨ Modo alta calidad"
+
+        # Mostrar al usuario qué modo se está usando
+        await status_msg.edit_text(
+            f"🔄 Comprimiendo video...\n"
+            f"📊 Tamaño: {size_mb:.1f} MB\n"
+            f"⚙️  {mensaje_calidad}\n"
+            f"⏱️ Por favor espera..."
+        )
 
         # Comprimir
         await update.message.reply_text("🔄 Comprimiendo video (esto puede tomar tiempo)...")
@@ -155,8 +189,8 @@ def main():
         app.run_polling(
             drop_pending_updates=True,
             timeout=300,  # <-- NUEVO: 5 minutos para cada petición
-            read_timeout=300,  # <-- NUEVO: 5 minutos para leer respuestas
-            connect_timeout=300
+            
+
         )
 
     except Exception as e:
