@@ -1,92 +1,167 @@
 import os
-import requests
 import subprocess
+import tempfile
+from pathlib import Path
 from telegram import Update
-from dotenv import load_dotenv
-from flask import Flask, send_from_directory
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram.ext import Application, MessageHandler, filters, CommandHandler
 
-load_dotenv()
+# === CONFIGURACIÓN ===
+TOKEN = "8885575677:AAHN3u6FRWxtY2sVOe3Rlte1RzNPyz5djyM"  # <--- PON EL TOKEN COMPLETO
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-VIDEO_DIR = os.getenv("VIDEO_DIR", "./videos")
-BASE_URL = os.getenv("BASE_URL", "http://localhost")
+FFMPEG_PATH = r"C:\ffmpeg\bin\ffmpeg.exe"
 
-if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN not found in environment variables.")
+# === VERIFICAR FFMPEG ===
+print("🔍 Verificando FFmpeg...")
+if os.path.exists(FFMPEG_PATH):
+    print(f"✅ FFmpeg encontrado: {FFMPEG_PATH}")
+else:
+    print(f"⚠️  FFmpeg NO encontrado en: {FFMPEG_PATH}")
+    print("   El bot funcionará pero no podrá comprimir videos")
 
-os.makedirs(VIDEO_DIR, exist_ok=True)
+# === DIRECTORIO TEMPORAL ===
+TEMP_DIR = Path(tempfile.gettempdir()) / "video_bot"
+TEMP_DIR.mkdir(exist_ok=True)
+print(f"📁 Directorio temporal: {TEMP_DIR}")
 
-app = Flask(__name__)
 
-@app.route('/videos/<path:filename>')
-def serve_video(filename):
-    return send_from_directory(VIDEO_DIR, filename)
+# === HANDLERS ===
+async def start(update: Update, context):
+    """Responde al comando /start"""
+    await update.message.reply_text(
+        "👋 ¡Hola! Soy el compresor de videos.\n\n"
+        "📹 Envíame un video y lo comprimiré.\n"
+        "⏱️ El proceso puede tomar varios segundos.\n\n"
+        "✅ El bot está funcionando correctamente."
+    )
+    print(f"✅ /start de @{update.effective_user.username}")
 
-async def start(update: Update, context: CallbackContext):
-    await update.message.reply_text("Send me a URL of a video, and I'll compress it for you!")
 
-async def handle_url(update: Update, context: CallbackContext):
-    url = update.message.text.strip()
-    user_id = update.message.chat_id
-
-    if not (url.startswith("http://") or url.startswith("https://")):
-        await update.message.reply_text("Invalid URL! Please send a valid URL.")
-        return
-
+async def handle_video(update: Update, context):
+    """Procesa videos"""
     try:
-        response = requests.head(url, allow_redirects=True)
-        if response.status_code != 200:
-            await update.message.reply_text(f"URL is not accessible! Status code: {response.status_code}")
+        user = update.effective_user.username or update.effective_user.id
+        print(f"📩 Video recibido de: {user}")
+
+        # Responder inmediatamente
+        await update.message.reply_text("📥 Procesando tu video...")
+
+        # Obtener archivo
+        file = await update.message.video.get_file()
+        file_id = file.file_id[:8]
+        input_path = TEMP_DIR / f"input_{file_id}.mp4"
+        output_path = TEMP_DIR / f"output_{file_id}.mp4"
+
+        # Descargar
+        await update.message.reply_text("⏬ Descargando video...")
+        await file.download_to_drive(input_path)
+
+        if not input_path.exists():
+            await update.message.reply_text("❌ Error: No se pudo descargar el video")
             return
-        content_length = response.headers.get('content-length', 'unknown')
-        await update.message.reply_text(f"URL is valid! File size: {content_length} bytes")
-    except Exception as e:
-        await update.message.reply_text(f"Error validating URL: {e}")
-        return
 
-    await update.message.reply_text("Downloading video... Please wait.")
-    try:
-        file_path = os.path.join(VIDEO_DIR, f"{user_id}_video.mp4")
-        download_video(url, file_path)
+        # Tamaño original
+        size_mb = input_path.stat().st_size / (1024 * 1024)
+        await update.message.reply_text(f"📊 Tamaño original: {size_mb:.2f} MB")
 
-        compressed_path = os.path.join(VIDEO_DIR, f"{user_id}_compressed.mp4")
-        compress_video(file_path, compressed_path)
+        # Comprimir
+        await update.message.reply_text("🔄 Comprimiendo video (esto puede tomar tiempo)...")
 
-        await update.message.reply_text("Video compressed successfully!")
+        cmd = [
+            FFMPEG_PATH,
+            "-i", str(input_path),
+            "-vcodec", "libx264",
+            "-crf", "28",
+            "-preset", "fast",
+            "-acodec", "aac",
+            "-b:a", "128k",
+            "-y",
+            str(output_path)
+        ]
 
-        if os.path.getsize(compressed_path) > 50 * 1024 * 1024:
-            download_url = f"{BASE_URL}/videos/{user_id}_compressed.mp4"
-            await update.message.reply_text(
-                f"The file is too large to send via Telegram. You can download it from: {download_url}"
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            error_msg = result.stderr[:200] if result.stderr else "Error desconocido"
+            await update.message.reply_text(f"❌ Error comprimiendo: {error_msg}")
+            input_path.unlink(missing_ok=True)
+            return
+
+        # Verificar resultado
+        if not output_path.exists():
+            await update.message.reply_text("❌ Error: No se generó el archivo comprimido")
+            input_path.unlink(missing_ok=True)
+            return
+
+        # Tamaño nuevo
+        new_size_mb = output_path.stat().st_size / (1024 * 1024)
+        reduccion = (1 - new_size_mb / size_mb) * 100 if size_mb > 0 else 0
+
+        # Enviar
+        await update.message.reply_text(
+            f"📤 Subiendo video comprimido...\n"
+            f"📊 Nuevo tamaño: {new_size_mb:.2f} MB\n"
+            f"📉 Reducción: {reduccion:.1f}%"
+        )
+
+        with open(output_path, 'rb') as f:
+            await update.message.reply_document(
+                f,
+                filename=f"video_comprimido_{file_id}.mp4",
+                caption="✅ ¡Video comprimido exitosamente!"
             )
-        else:
-            await update.message.reply_document(document=open(compressed_path, "rb"))
+
+        # Limpiar
+        input_path.unlink(missing_ok=True)
+        output_path.unlink(missing_ok=True)
+
+        print(f"✅ Procesamiento completado para {user}")
+
+    except FileNotFoundError as e:
+        print(f"❌ Error: FFmpeg no encontrado en {FFMPEG_PATH}")
+        await update.message.reply_text(
+            f"❌ Error: No se encontró FFmpeg.\n"
+            f"Asegúrate de que esté instalado en:\n{FFMPEG_PATH}"
+        )
     except Exception as e:
-        await update.message.reply_text(f"Error processing video: {e}")
+        print(f"❌ Error general: {e}")
+        await update.message.reply_text(f"❌ Error procesando el video: {str(e)[:200]}")
 
-def download_video(url: str, file_path: str):
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open(file_path, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
 
-def compress_video(input_file: str, output_file: str):
-    command = ["ffmpeg", "-y", "-i", input_file, "-vcodec", "libx264", "-crf", "32", output_file]
-    subprocess.run(command, check=True)
-
+# === INICIAR BOT ===
 def main():
-    application = Application.builder().token(BOT_TOKEN).build()
+    print("\n" + "=" * 50)
+    print("🚀 INICIANDO BOT COMPRESOR DE VIDEOS")
+    print("=" * 50)
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_url))
+    try:
+        # Crear aplicación
+        app = Application.builder().token(TOKEN).build()
 
-    from threading import Thread
-    flask_thread = Thread(target=app.run, kwargs={"host": "0.0.0.0", "port": 5000})
-    flask_thread.start()
+        # Agregar handlers
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(MessageHandler(filters.VIDEO, handle_video))
 
-    application.run_polling()
+        print("✅ Bot configurado correctamente")
+        print(f"📱 Bot: @Jugomundocompressor_bot")
+        print("\n📋 INSTRUCCIONES:")
+        print("   1. Busca @Jugomundocompressor_bot en Telegram")
+        print("   2. Envía /start para verificar")
+        print("   3. Envía un video para comprimirlo")
+        print("\n⏹️  Presiona Ctrl+C para detener el bot")
+        print("=" * 50)
+        print()
+
+        # Iniciar polling
+        app.run_polling(
+            drop_pending_updates=True,
+            timeout=300,  # <-- NUEVO: 5 minutos para cada petición
+            read_timeout=300,  # <-- NUEVO: 5 minutos para leer respuestas
+            connect_timeout=300
+        )
+
+    except Exception as e:
+        print(f"❌ Error al iniciar el bot: {e}")
+
 
 if __name__ == "__main__":
     main()
