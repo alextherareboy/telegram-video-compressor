@@ -7,6 +7,40 @@ from pathlib import Path
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, CommandHandler
 
+# === COLA DE PROCESAMIENTO ===
+processing_queue = Queue()
+is_processing = False
+
+
+async def process_queue(app):
+    """Procesa los videos en cola uno por uno"""
+    global is_processing
+
+    while True:
+        try:
+            # Esperar a que haya un elemento en la cola
+            update, context = await processing_queue.get()
+
+            is_processing = True
+            print(f"🔄 Procesando solicitud de {update.effective_user.username}")
+
+            # Procesar el video
+            await handle_video(update, context)
+
+            # Marcar como completado
+            processing_queue.task_done()
+            is_processing = False
+
+            # Notificar al siguiente usuario
+            if not processing_queue.empty():
+                print(f"⏳ {processing_queue.qsize()} solicitudes en espera.")
+
+        except Exception as e:
+            print(f"❌ Error en process_queue: {e}")
+            is_processing = False
+            await asyncio.sleep(1)
+
+
 # === CONFIGURACIÓN ===
 TOKEN = "8885575677:AAHN3u6FRWxtY2sVOe3Rlte1RzNPyz5djyM"  # <--- PON EL TOKEN COMPLETO
 
@@ -219,7 +253,31 @@ def main():
 
         # Agregar handlers
         app.add_handler(CommandHandler("start", start))
-        app.add_handler(MessageHandler(filters.VIDEO, handle_video))
+
+        # Handler que añade a la cola en lugar de procesar directamente
+        async def video_handler(update: Update, context):
+            """Añade el video a la cola de procesamiento"""
+            try:
+                user = update.effective_user.username or update.effective_user.id
+
+                # Verificar si ya hay procesamiento
+                if is_processing:
+                    position = processing_queue.qsize() + 1
+                    await update.message.reply_text(
+                        f"⏳ ¡El bot está procesando otro video!\n"
+                        f"📌 Eres el número {position} en la fila.\n"
+                        f"⏱️ El proceso puede tomar varios minutos."
+                    )
+
+                # Añadir a la cola
+                await processing_queue.put((update, context))
+                print(f"📥 {user} añadido a la cola (posición {processing_queue.qsize()})")
+
+            except Exception as e:
+                print(f"❌ Error en video_handler: {e}")
+                await update.message.reply_text(
+                    "❌ Error al añadir el video a la cola. Por favor, intenta de nuevo."
+                )
 
         print("✅ Bot configurado correctamente")
         print(f"📱 Bot: @Jugomundocompressor_bot")
