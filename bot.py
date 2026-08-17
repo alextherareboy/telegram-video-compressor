@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, CommandHandler
-from asyncio import Queue 
+from asyncio import Queue
 # === COLA DE PROCESAMIENTO ===
 processing_queue = Queue()
 is_processing = False
@@ -246,7 +246,6 @@ def main():
     print("\n" + "=" * 50)
     print("🚀 INICIANDO BOT COMPRESOR DE VIDEOS")
     print("=" * 50)
-
     try:
         # Crear aplicación
         app = Application.builder().token(TOKEN).build()
@@ -293,12 +292,13 @@ def main():
         app.run_polling(
             drop_pending_updates=True,
             timeout=300,  # <-- NUEVO: 5 minutos para cada petición
-            
 
         )
 
     except Exception as e:
         print(f"❌ Error al iniciar el bot: {e}")
+
+
 
 
 if __name__ == "__main__":
