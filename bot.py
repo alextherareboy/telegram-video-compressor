@@ -62,40 +62,58 @@ async def handle_video(update: Update, context, status_msg=None):
         # Descargar
         await update.message.reply_text("⏬ Descargando video...")
         await file.download_to_drive(input_path)
+        try:
+            # Intenta descargar el archivo
+            await file.download_to_drive(input_path)
+        except Exception as e:
+            # Captura CUALQUIER error durante la descarga
+            print("Error, intente de nuevo")
+            return
+
 
         if not input_path.exists():
             await update.message.reply_text("❌ Error: No se pudo descargar el video")
             return
 
+        #EN CASO DE EXCEDER EL TAMAÑO DEL ARCHIVO:
+        if size_mb > 20:
+            print ("El archivo excede el tamaño permitido. El archivo no puede exceder los 20MB. ")
+            return
+
+
         # Tamaño original
         size_mb = input_path.stat().st_size / (1024 * 1024)
         await update.message.reply_text(f"📊 Tamaño original: {size_mb:.2f} MB")
+
+
         # === AJUSTE AUTOMÁTICO DE CALIDAD Y VELOCIDAD ===
         # Según el tamaño del video, ajustamos los parámetros
 
-        if size_mb > 80:
+
+
+       # if size_mb > 80:
             # Videos muy grandes: compresión rápida y agresiva
-            crf = 32
-            preset = "veryfast"
-            mensaje_calidad = "⚡ Modo rápido (prioriza velocidad)"
+           # crf = 32
+            #preset = "veryfast"
+            #mensaje_calidad = "⚡ Modo rápido (prioriza velocidad)"
 
-        elif size_mb > 40:
+      #  elif size_mb > 40:
             # Videos medianos: balance entre calidad y velocidad
-            crf = 30
-            preset = "fast"
-            mensaje_calidad = "📊 Modo balanceado"
+            #crf = 30
+            #preset = "fast"
+            #mensaje_calidad = "📊 Modo balanceado"
 
-        elif size_mb > 20:
+       # elif size_mb > 20:
             # Videos pequeños: buena calidad
-            crf = 28
-            preset = "fast"
-            mensaje_calidad = "🎯 Modo calidad óptima"
+            #crf = 28
+            #preset = "fast"
+            #mensaje_calidad = "🎯 Modo calidad óptima"
 
-        else:
+      #  else:
             # Videos muy pequeños: mejor calidad posible
-            crf = 26
-            preset = "medium"
-            mensaje_calidad = "✨ Modo alta calidad"
+           # crf = 26
+            #preset = "medium"
+            #mensaje_calidad #= #"✨ Modo alta calidad"
 
 
 
