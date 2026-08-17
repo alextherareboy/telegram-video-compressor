@@ -47,10 +47,10 @@ async def handle_video(update: Update, context, status_msg=None):
         user = update.effective_user.username or update.effective_user.id
         print(f"📩 Video recibido de: {user}")
         if status_msg is None:
-            status_msg = await update.message.reply_text("📥Procesando tu video")
+            status_msg = await update.message.reply_text("📥Procesando tu video")  # Responder inmediatamente
 
-        # Responder inmediatamente
-        await update.message.reply_text("📥 Procesando tu video...")
+
+
 
 
         # Obtener archivo
@@ -97,14 +97,6 @@ async def handle_video(update: Update, context, status_msg=None):
             preset = "medium"
             mensaje_calidad = "✨ Modo alta calidad"
 
-        # Mostrar al usuario qué modo se está usando
-        if status_msg:
-            await status_msg.edit_text(
-                f"🔄 Comprimiendo video...\n"
-                f"📊 Tamaño: {size_mb:.1f} MB\n"
-                f"⚙️  {mensaje_calidad}\n"
-                f"⏱️ Por favor espera..."
-            )
 
 
         # Comprimir
