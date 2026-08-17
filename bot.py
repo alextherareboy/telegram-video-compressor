@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, CommandHandler
-
+from asyncio import Queue 
 # === COLA DE PROCESAMIENTO ===
 processing_queue = Queue()
 is_processing = False
