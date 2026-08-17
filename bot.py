@@ -47,7 +47,7 @@ async def handle_video(update: Update, context, status_msg=None):
         user = update.effective_user.username or update.effective_user.id
         print(f"📩 Video recibido de: {user}")
         if status_msg is None:
-            status_msg = await update.message.reply_text("📥Procesando tu video")  # Responder inmediatamente
+            status_msg = await update.message.reply_text("📥Procesando tu video...")  # Responder inmediatamente
 
 
 
@@ -60,11 +60,12 @@ async def handle_video(update: Update, context, status_msg=None):
         output_path = TEMP_DIR / f"output_{file_id}.mp4"
 
         # Descargar
-        await update.message.reply_text("⏬ Descargando video...")
-    
+        msg_descarga = await update.message.reply_text("⏬ Descargando video...")
+
         try:
             # Intenta descargar el archivo
             await file.download_to_drive(input_path)
+            await msg_descarga.delete()
         except Exception as e:
             # Captura CUALQUIER error durante la descarga
             print("Error, intente de nuevo")
@@ -77,7 +78,7 @@ async def handle_video(update: Update, context, status_msg=None):
 
         # Tamaño original
         size_mb = input_path.stat().st_size / (1024 * 1024)
-        await update.message.reply_text(f"📊 Tamaño original: {size_mb:.2f} MB")
+        msg_tamaño = await update.message.reply_text(f"📊 Tamaño original: {size_mb:.2f} MB")
 
         # EN CASO DE EXCEDER EL TAMAÑO DEL ARCHIVO:
         if size_mb > 20:
@@ -117,7 +118,14 @@ async def handle_video(update: Update, context, status_msg=None):
 
 
         # Comprimir
-        await update.message.reply_text("🔄 Comprimiendo video (esto puede tomar tiempo)...")
+        msg_compresion = await update.message.reply_text("🔄 Comprimiendo video (esto puede tomar tiempo)...")
+
+        # Borrar mensajes temporales
+        await msg_tamaño.delete()
+        await status_msg.delete()
+
+
+
 
         cmd = [
             FFMPEG_PATH,
