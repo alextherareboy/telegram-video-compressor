@@ -61,7 +61,7 @@ async def handle_video(update: Update, context, status_msg=None):
 
         # Descargar
         await update.message.reply_text("⏬ Descargando video...")
-        await file.download_to_drive(input_path)
+    
         try:
             # Intenta descargar el archivo
             await file.download_to_drive(input_path)
@@ -75,15 +75,14 @@ async def handle_video(update: Update, context, status_msg=None):
             await update.message.reply_text("❌ Error: No se pudo descargar el video")
             return
 
-        #EN CASO DE EXCEDER EL TAMAÑO DEL ARCHIVO:
-        if size_mb > 20:
-            print ("El archivo excede el tamaño permitido. El archivo no puede exceder los 20MB. ")
-            return
-
-
         # Tamaño original
         size_mb = input_path.stat().st_size / (1024 * 1024)
         await update.message.reply_text(f"📊 Tamaño original: {size_mb:.2f} MB")
+
+        # EN CASO DE EXCEDER EL TAMAÑO DEL ARCHIVO:
+        if size_mb > 20:
+            print("El archivo excede el tamaño permitido. Por favor envie un archivo menor de 20 MB.")
+            return
 
 
         # === AJUSTE AUTOMÁTICO DE CALIDAD Y VELOCIDAD ===
