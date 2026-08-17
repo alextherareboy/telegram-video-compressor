@@ -138,31 +138,11 @@ async def handle_video(update: Update, context, status_msg=None):
             str(output_path)
         ]
 
-        # Ejecutar FFmpeg de forma asíncrona
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True)
 
-        try:
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=300)
-            returncode = process.returncode
-        except asyncio.TimeoutError:
-            process.kill()
-            await update.message.reply_text("❌ El proceso de compresión ha excedido el tiempo límite (5 minutos)")
-            await msg_compresion.delete()
-            await msg_tamaño.delete()
-            await status_msg.delete()
-            input_path.unlink(missing_ok=True)
-            return
-
-        if returncode != 0:
-            error_msg = stderr.decode()[:200] if stderr else "Error desconocido"
+        if result.returncode != 0:
+            error_msg = result.stderr[:200] if result.stderr else "Error desconocido"
             await update.message.reply_text(f"❌ Error comprimiendo: {error_msg}")
-            await msg_compresion.delete()
-            await msg_tamaño.delete()
-            await status_msg.delete()
             input_path.unlink(missing_ok=True)
             return
 
